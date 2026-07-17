@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,6 +10,9 @@ sns.set_theme(style='whitegrid', palette='husl')
 plt.rcParams['figure.figsize'] = (12, 6)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.float_format', '{:.4f}'.format)
+
+# Créer le dossier figures s'il n'existe pas
+os.makedirs('figures', exist_ok=True)
 
 print(' Imports OK')
 
@@ -53,8 +57,8 @@ axes[1].pie(pcts.values, labels=['Reste (0)', 'Churn (1)'],
 axes[1].set_title('Proportion du churn', fontsize=14)
 
 plt.tight_layout()
-plt.savefig('figures/01_target_distribution.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/01_target_distribution.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 print(f'\nClasse 0 (reste) : {counts[0]} ({pcts[0]:.2f}%)')
 print(f'Classe 1 (churn) : {counts[1]} ({pcts[1]:.2f}%)')
@@ -95,8 +99,8 @@ if len(missing_df) > 0:
     plt.title('Top colonnes avec valeurs manquantes', fontsize=14)
     plt.legend()
     plt.tight_layout()
-    plt.savefig('figures/02_missing_values.png', dpi=150, bbox_inches='tight')
-    plt.show()
+    plt.savefig('figures/02_missing_values.png', dpi=80, bbox_inches='tight')
+    plt.close()
 
 # ============================================================
 # 5. TYPES DE COLONNES
@@ -118,11 +122,11 @@ n_cols_plot  = 4
 n_rows_plot  = (len(cols_to_plot) + n_cols_plot - 1) // n_cols_plot
 
 fig, axes = plt.subplots(n_rows_plot, n_cols_plot,
-                         figsize=(20, n_rows_plot * 4))
+                         figsize=(16, n_rows_plot * 3))
 axes = axes.flatten()
 
 for i, col in enumerate(cols_to_plot):
-    axes[i].hist(train[col].dropna(), bins=40,
+    axes[i].hist(train[col].dropna(), bins=20,
                  color='steelblue', edgecolor='white', alpha=0.8)
     axes[i].set_title(col, fontsize=10)
 
@@ -132,14 +136,14 @@ for j in range(len(cols_to_plot), len(axes)):
 plt.suptitle('Distribution des variables numériques (20 premières)',
              fontsize=16, y=1.02)
 plt.tight_layout()
-plt.savefig('figures/03_histograms.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/03_histograms.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 # ============================================================
 # 7. BOXPLOTS — DÉTECTION DES OUTLIERS
 # ============================================================
 fig, axes = plt.subplots(n_rows_plot, n_cols_plot,
-                         figsize=(20, n_rows_plot * 4))
+                         figsize=(16, n_rows_plot * 3))
 axes = axes.flatten()
 
 for i, col in enumerate(cols_to_plot):
@@ -154,8 +158,8 @@ for j in range(len(cols_to_plot), len(axes)):
 plt.suptitle('Boxplots — Détection des outliers (20 premières)',
              fontsize=16, y=1.02)
 plt.tight_layout()
-plt.savefig('figures/04_boxplots.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/04_boxplots.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 # ============================================================
 # 8. CORRÉLATION AVEC LA TARGET
@@ -171,8 +175,8 @@ plt.barh(corr_target.index[:30], corr_target.values[:30], color=colors[:30])
 plt.xlabel('Corrélation absolue avec TARGET')
 plt.title('Top 30 features les plus corrélées avec le churn', fontsize=14)
 plt.tight_layout()
-plt.savefig('figures/05_correlation_target.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/05_correlation_target.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 # ============================================================
 # 9. HEATMAP DE CORRÉLATION
@@ -180,15 +184,15 @@ plt.show()
 top_features  = corr_target.index[:20].tolist() + ['TARGET']
 corr_matrix   = train[top_features].corr()
 
-plt.figure(figsize=(16, 12))
+plt.figure(figsize=(14, 10))
 mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
 sns.heatmap(corr_matrix, mask=mask, annot=True, fmt='.2f',
             cmap='RdBu_r', center=0, vmin=-1, vmax=1,
             linewidths=0.5, cbar_kws={'shrink': 0.8})
 plt.title('Heatmap de corrélation — Top 20 features', fontsize=14)
 plt.tight_layout()
-plt.savefig('figures/06_heatmap.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/06_heatmap.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 # ============================================================
 # 10. VARIANCE DES FEATURES
@@ -209,8 +213,8 @@ plt.ylabel('Variance (échelle log)')
 plt.title('Variance de toutes les features numériques', fontsize=14)
 plt.legend()
 plt.tight_layout()
-plt.savefig('figures/07_variance.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/07_variance.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 # ============================================================
 # 11. VARIABLES CATÉGORIELLES
@@ -218,15 +222,26 @@ plt.show()
 if len(cat_cols) > 0:
     n_rows_cat = (len(cat_cols) + 2) // 3
     fig, axes  = plt.subplots(n_rows_cat, 3,
-                               figsize=(18, n_rows_cat * 5))
+                               figsize=(15, n_rows_cat * 4))
     axes = axes.flatten()
 
     for i, col in enumerate(cat_cols):
-        value_counts = train[col].value_counts()
+        # IMPORTANT : limiter à TOP 15 valeurs maximum
+        # → évite de tracer 19 588 barres pour CLNT_JOB_POSITION
+        n_unique      = train[col].nunique()
+        value_counts  = train[col].value_counts().head(15)
+
         axes[i].bar(value_counts.index.astype(str), value_counts.values,
                     color='coral', edgecolor='black')
-        axes[i].set_title(
-            f'{col} ({train[col].nunique()} valeurs uniques)', fontsize=11)
+
+        # Titre indique si on affiche seulement le top 15
+        if n_unique > 15:
+            axes[i].set_title(
+                f'{col}\n({n_unique} valeurs — top 15 affichées)', fontsize=9)
+        else:
+            axes[i].set_title(
+                f'{col} ({n_unique} valeurs)', fontsize=10)
+
         axes[i].tick_params(axis='x', rotation=45)
 
     for j in range(len(cat_cols), len(axes)):
@@ -235,23 +250,23 @@ if len(cat_cols) > 0:
     plt.suptitle('Distribution des variables catégorielles',
                  fontsize=16, y=1.02)
     plt.tight_layout()
-    plt.savefig('figures/08_categorical.png', dpi=150, bbox_inches='tight')
-    plt.show()
+    plt.savefig('figures/08_categorical.png', dpi=80, bbox_inches='tight')
+    plt.close()
 
 # ============================================================
 # 12. FEATURES vs TARGET (churn vs non-churn)
 # ============================================================
 top12 = corr_target.index[:12].tolist()
 
-fig, axes = plt.subplots(3, 4, figsize=(20, 15))
+fig, axes = plt.subplots(3, 4, figsize=(14, 10))
 axes = axes.flatten()
 
 for i, col in enumerate(top12):
     churn_0 = train[train['TARGET'] == 0][col].dropna()
     churn_1 = train[train['TARGET'] == 1][col].dropna()
-    axes[i].hist(churn_0, bins=40, alpha=0.6,
+    axes[i].hist(churn_0, bins=20, alpha=0.6,
                  label='Reste (0)', color='#2ecc71', density=True)
-    axes[i].hist(churn_1, bins=40, alpha=0.6,
+    axes[i].hist(churn_1, bins=20, alpha=0.6,
                  label='Churn (1)', color='#e74c3c', density=True)
     axes[i].set_title(col, fontsize=10)
     axes[i].legend(fontsize=8)
@@ -259,8 +274,8 @@ for i, col in enumerate(top12):
 plt.suptitle('Distribution des top features par classe TARGET',
              fontsize=16, y=1.02)
 plt.tight_layout()
-plt.savefig('figures/09_features_vs_target.png', dpi=150, bbox_inches='tight')
-plt.show()
+plt.savefig('figures/09_features_vs_target.png', dpi=80, bbox_inches='tight')
+plt.close()
 
 # ============================================================
 # 13. CORRÉLATION DES FLAGS AVEC LA TARGET
